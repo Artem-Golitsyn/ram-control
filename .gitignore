@@ -1,0 +1,15 @@
+build/
+dist/
+DerivedData/
+.derivedData/
+*.xcresult
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+.swiftpm/
+.DS_Store
+*.swp
+*~
