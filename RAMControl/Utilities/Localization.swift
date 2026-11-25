@@ -40,6 +40,10 @@ enum L10nKey: Sendable {
     case updateInterval
     case appearance
     case language
+    case showPanel
+    case heavyProcesses
+    case statistics
+    case noHeavyProcesses
     case showMemoryGraph
     case graphPeriod
     case units
@@ -289,6 +293,10 @@ enum L10n {
         case .updateInterval: return "Update Interval"
         case .appearance: return "Appearance"
         case .language: return "Language"
+        case .showPanel: return "Show"
+        case .heavyProcesses: return "Heavy Processes"
+        case .statistics: return "Statistics"
+        case .noHeavyProcesses: return "No processes"
         case .showMemoryGraph: return "Memory Graph"
         case .graphPeriod: return "Graph Period"
         case .units: return "Units"
@@ -347,6 +355,10 @@ enum L10n {
         case .updateInterval: return "Интервал обновления"
         case .appearance: return "Оформление"
         case .language: return "Язык"
+        case .showPanel: return "Показывать"
+        case .heavyProcesses: return "Тяжелые процессы"
+        case .statistics: return "Статистика"
+        case .noHeavyProcesses: return "Нет процессов"
         case .showMemoryGraph: return "График памяти"
         case .graphPeriod: return "Период графика"
         case .units: return "Единицы"

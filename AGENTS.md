@@ -13,7 +13,7 @@
 - Исполняемый файл: `RAM Control.app/Contents/MacOS/RAM Control`
 - Bundle ID: `app.ramcontrol.RAMControl`
 - Тесты: таргет `RAMControlTests`, bundle ID `app.ramcontrol.RAMControlTests`, `@testable import RAMControl`
-- Версия: `MARKETING_VERSION` 1.3, `CURRENT_PROJECT_VERSION` 1
+- Версия: `MARKETING_VERSION` 1.4, `CURRENT_PROJECT_VERSION` 1
 - Категория: `public.app-category.utilities`
 
 Это агент меню-бара, не обычное приложение с окном и Dock.
@@ -43,10 +43,13 @@ RAMControl/
 ├── Models/
 │   ├── MemoryStats.swift        # MemorySampleInput, MemoryStats, MemoryPressureState
 │   ├── MemoryThresholds.swift   # пороги и ThresholdCommit
-│   └── MemoryHistory.swift      # HistoryWindow, кольцо замеров, полосы графика
+│   ├── MemoryHistory.swift      # HistoryWindow, кольцо замеров, полосы графика
+│   ├── PanelDisplay.swift       # heavyProcesses | statistics
+│   └── ProcessMemory.swift      # снимок процесса и отбор топ-8
 ├── Services/
 │   ├── MemoryMonitor.swift      # единственные Mach/sysctl вызовы
 │   ├── MemoryCalculator.swift   # чистая математика
+│   ├── ProcessMemoryReader.swift # libproc, ri_phys_footprint, без shell
 │   └── LaunchAtLoginManager.swift
 ├── ViewModels/
 │   └── MemoryViewModel.swift    # один цикл обновления, UserDefaults
@@ -67,10 +70,12 @@ RAMControl/
 RAMControlTests/
 ├── MemoryCalculatorTests.swift
 ├── ByteFormatterTests.swift
-└── MemoryHistoryTests.swift
+├── MemoryHistoryTests.swift
+└── ProcessMemoryTests.swift
 icon.png                         # мастер иконки, 1254×1254
 build.sh
 README.md
+README.ru.md
 AGENTS.md
 ```
 
@@ -88,7 +93,9 @@ xcodebuild -project RAMControl.xcodeproj -scheme RAMControl \
 
 `build.sh` печатает абсолютный путь к `RAM Control.app` и завершается с ненулевым кодом при ошибке (`set -euo pipefail`).
 
-Релизный архив: `dist/RAM-Control-1.3.zip`. В корне zip лежит `RAM Control.app`, не каталог `dist`. Собирать через `ditto -c -k --keepParent`, чтобы сохранить подпись и симлинки.
+Релизный архив: `dist/RAM-Control-1.4.zip`. В корне zip лежит `RAM Control.app`, не каталог `dist`. Собирать через `ditto -c -k --keepParent`, чтобы сохранить подпись и симлинки. `dist/` в git не класть.
+
+Установщик: `RAM-Control-1.4.dmg` в корне репозитория. Том называется `RAM Control`. Внутри образ `RAM Control.app` и символическая ссылка на `/Applications`. Собирать из уже подписанной копии: каталог со приложением и ссылкой, затем `hdiutil create -volname "RAM Control" -srcfolder <каталог> -ov -format UDZO`.
 
 `TEST_HOST` содержит пробелы:
 
@@ -108,12 +115,14 @@ $(BUILT_PRODUCTS_DIR)/RAM Control.app/Contents/MacOS/RAM Control
 Панель (`Constants.popoverWidth` = 300):
 
 - заголовок Memory / Память и бейдж состояния. Цвет бейджа совпадает с цветом полосы
-- крупно Available и числа строк от Available до Swap всегда `PressureStyle.valueColor` (`NSColor.systemGray`). Переключателя цвета нет
+- крупно Available и числа нижнего списка всегда `PressureStyle.valueColor` (`NSColor.systemGray`). Переключателя цвета нет
 - строка Physical RAM
 - `MemoryUsageBar`: доля Used. Цвет полосы всегда палитра состояния; при отсутствии данных — `accentColor`
 - подписи Used и Available
 - `MemoryHistoryChart`, если график включён. Время горизонтальное: правый край — сейчас, история заполняется влево. Высота — занятые байты, шкала от минимума до максимума видимых замеров. Линия толщиной 1 pt, без заливки. `MemoryGraphBlend` записывается в замер в момент чтения и больше не пересчитывается, в том числе после смены порогов. Между соседними замороженными цветами переход остаётся градиентом. Пауза длиннее `maxConnectionGap` (20 с) разрывает линию. Сетка серым пунктиром: 5 вертикальных линий на возрастах `window/5 … window` с подписью длительности, две горизонтальные — минимум и максимум занятой памяти. Окно 1 / 3 / 5 / 10 минут, по умолчанию 5
-- строки Available, Used, Active, Inactive, Wired, Compressed, Purgeable, Swap Used
+- нижний список зависит от `PanelDisplay`:
+  - `.heavyProcesses` (по умолчанию): до 8 процессов с наибольшим физическим футпринтом. В строке имя и объём. Если процессов меньше восьми, показываются все. Пустой ответ — «No processes» / «Нет процессов» и «—», не нули
+  - `.statistics`: строки Available, Used, Active, Inactive, Wired, Compressed, Purgeable, Swap Used
 - Settings… и Quit (`terminate`)
 
 Строки «Обновлено» на панели нет. Настроек «Цветовая индикация» и «Цвет значений памяти» нет.
@@ -133,14 +142,14 @@ $(BUILT_PRODUCTS_DIR)/RAM Control.app/Contents/MacOS/RAM Control
 
 - Кнопка Reset Settings стоит в правом верхнем углу содержимого (`safeAreaInset` сверху). Подсказки под ней нет
 - General: автозапуск, интервал 0.2 / 0.5 / 1 / 2 / 5 / 10 с
-- Appearance: язык, GB или GiB, показ графика, период графика. Период недоступен, пока график выключен. Цветовой индикации и цвета значений в настройках нет
+- Appearance: «Показывать» / Show (`PanelDisplay`), язык, GB или GiB, показ графика, период графика. Период недоступен, пока график выключен. Цветовой индикации и цвета значений в настройках нет. Подписи режима: EN `Heavy Processes` и `Statistics`, RU `Тяжелые процессы` и `Статистика`. `label(language:)` без языка не существует
 - Memory Thresholds: Warning по умолчанию 30, Critical 15. Оба в 1...99, critical строго меньше warning. Невалидная пара не сохраняется. Кламп 1...99 даёт `.savedClamped`, нарушение порядка — `.rejected`
 - About, две строки и ничего больше:
   - EN: `Version: RAM Control version [CFBundleShortVersionString]`
   - RU: `Версия: RAM Control версия [CFBundleShortVersionString]`
   - EN: `Author: Голицын Артем (2026)`
   - RU: `Автор: Голицын Артем (2026)`
-- Reset Settings сбрасывает интервал, график, период графика, единицы, язык и пороги. Автозапуск не трогает. История графика в памяти не стирается: это не настройка
+- Reset Settings сбрасывает интервал, график, период графика, единицы, язык, пороги и режим панели на `heavyProcesses`. Автозапуск не трогает. История графика в памяти не стирается: это не настройка
 - Отдельной нижней секции с автором нет. Имя автора — `L10n.authorCredit` = `Голицын Артем (2026)`. Не переводить и не транслитерировать. Подписи Author / Автор локализуются вокруг этой константы
 
 ## Локализация
@@ -153,7 +162,7 @@ $(BUILT_PRODUCTS_DIR)/RAM Control.app/Contents/MacOS/RAM Control
 2. Ветки `english` и `russian`.
 3. Вызов из View с `viewModel.language`, чтобы `@Observable` перерисовал экран.
 
-`MemoryPressureState.title(language:)`, `RefreshInterval.label(language:)` и `HistoryWindow.label(language:)` без языка не существуют. Сообщения порогов — `ThresholdNotice`, не готовая английская строка. Ошибки монитора и автозапуска показываются через `userMessage(language:)`. `errorDescription` оставлен английским для логов.
+`MemoryPressureState.title(language:)`, `RefreshInterval.label(language:)`, `HistoryWindow.label(language:)` и `PanelDisplay.label(language:)` без языка не существуют. Сообщения порогов — `ThresholdNotice`, не готовая английская строка. Ошибки монитора и автозапуска показываются через `userMessage(language:)`. `errorDescription` оставлен английским для логов.
 
 `strerror` / `mach_error_string` не переводятся. Локализуется только обёртка.
 
@@ -172,6 +181,7 @@ $(BUILT_PRODUCTS_DIR)/RAM Control.app/Contents/MacOS/RAM Control
 | `appLanguage` | `language` | `en` |
 | `memoryGraphEnabled` | `historyGraphEnabled` | `true` |
 | `memoryGraphMinutes` | `historyWindow` | `5` |
+| `panelDisplay` | `panelDisplay` | `heavyProcesses` |
 
 `didStart` закрывает запись в `init`, иначе `didSet` затрёт загруженные значения. Автозапуск в UserDefaults не дублируется: источник истины — `SMAppService.mainApp.status == .enabled`.
 
@@ -214,13 +224,29 @@ available       = total - used                       # насыщающее вы
 
 Логи пишутся в stderr и `Logger(subsystem: "app.ramcontrol.RAMControl", category: "Memory")` только когда текст изменился.
 
+## Процессы
+
+Список строится только для режима «Тяжелые процессы». Это не формула Used и не сумма строк статистики.
+
+`ProcessMemoryReader.readTop()`:
+
+- PID: `proc_listpids(PROC_ALL_PIDS)`. Буфер, который заполнился целиком, читается ещё раз крупнее
+- Память: `proc_pid_rusage` с `RUSAGE_INFO_V4`, поле `ri_phys_footprint`. Это физический футпринт, как столбец Memory в Activity Monitor, а не RSS `pti_resident_size` и не `ri_resident_size`
+- Ошибка вызова и футпринт `0` процесс в список не попадают. Нуль на экране не рисуется
+- Имя: последний компонент `proc_pidpath`, иначе `proc_name`, иначе десятичный pid. `ProcessMemoryName.display` сжимает имя без пробелов из трёх и более частей через точку до последней: `com.apple.WebKit.WebContent` → `WebContent`. Имя с пробелом не режется
+- Порядок: `ProcessMemoryRanking.top`. Байт по убыванию, при равенстве меньший pid раньше. На панели не больше 8 строк. Одинаковые имена не склеиваются: это разные процессы
+
+Живая машина не оракул для чисел в этом списке. Тесты кормят `ProcessMemoryRanking` готовыми снимками.
+
 ## Цикл обновления
 
 Один `Task` в `RefreshTaskStore`. `replace` отменяет предыдущий под `NSLock`. Второй таймер не создавать. `Timer.publish` не использовать.
 
 Интервал читается в момент `restartMonitoring()`. Смена интервала отменяет цикл и запускает один новый. Сон не порождает новый цикл: `Task.sleep` приостанавливается системой, а `SystemEventBridge` на `NSWorkspace.didWakeNotification` и `screensDidWakeNotification` вызывает один `refreshNow()`. `willTerminate` останавливает цикл.
 
-`refreshNow` увеличивает `refreshGeneration`. Результат применяется, только если поколение совпало и задача не отменена. Присвоение `stats` происходит на `@MainActor`.
+`refreshNow` увеличивает `refreshGeneration`. Результат применяется, только если поколение совпало и задача не отменена. Присвоение `stats` и `heavyProcesses` происходит на `@MainActor`.
+
+Если `panelDisplay == .heavyProcesses`, тот же `Task.detached` после замера памяти вызывает `ProcessMemoryReader.readTop()`. В режиме `.statistics` libproc не вызывается, и прошлый список процессов не подменяется пустым. Смена режима пишет UserDefaults и делает один `refreshNow()`. Второй цикл из-за этого не запускается.
 
 Успешный замер с `total > 0` дописывается в `MemoryHistory` на том же цикле. Второго таймера для графика нет. Буфер только в памяти, не в UserDefaults: хранение 10 минут, потолок `MemoryHistory.maxSamples`. Ошибка чтения и `total == 0` точку не добавляют и не рисуют нули. `visibleSamples` отдаёт замеры окна как есть, от старых к новым. Значение уже нарисованной точки не заменяется более новым замером.
 
@@ -275,10 +301,12 @@ sips -z 1024 1024 icon.png --out "$DIR/icon_512x512@2x.png"
 - интервал: миллисекунды `200/500/1000/2000/5000/10000` и старые секунды `1/2/5/10`; подписи `0.2 seconds` и `0.2 секунды`
 - график: замеры окна сохраняют `usedBytes` и записанный `blend`, идут слева направо, сейчас — правый край (`horizontalPosition` 1), край окна — левый (0), шкала высоты от минимума к максимуму, плоский ряд в середине, пауза больше 20 с рвёт линию, пять вертикальных делений `window/5 … window`, подписи `1 min` / `5 мин` / `12 с`, цвет в середине между critical и warning жёлтый, на critical и ниже красный, на warning и выше серый, буфер старше 10 минут и будущее дальше 2 секунд выкидываются
 - язык по умолчанию `en`, `ru` отдаёт «Память», `L10n.authorCredit` равен `Голицын Артем (2026)`, русская строка автора — `Автор: Голицын Артем (2026)`, русская строка версии — `Версия: RAM Control версия [версия]`
+- процессы: топ-8 по убыванию байтов, нулевые байты и отрицательный pid отбрасываются, при равных байтах меньший pid раньше, лимит 0 и пустой вход дают пустой список, `com.apple.WebKit.WebContent` показывается как `WebContent`, режим по умолчанию `heavyProcesses`, подписи `Показывать`, `Тяжелые процессы`, `Статистика`, `Нет процессов`
 
 ## Чего не делать
 
-- Не вызывать `vm_stat`, `top`, `memory_pressure`, `sysctl` через `Process`
+- Не вызывать `vm_stat`, `top`, `ps`, `memory_pressure`, `sysctl` через `Process`
+- Не подменять `ri_phys_footprint` на RSS или на сумму строк статистики
 - Не суммировать Active + Inactive + Wired + Compressed в Used
 - Не прибавлять `speculative_count` к free и весь `purgeable_count` к Available
 - Не показывать нули, если системный вызов вернул ошибку

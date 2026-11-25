@@ -14,7 +14,7 @@ struct MemoryPopoverView: View {
             header
             availableBlock
             usageBlock
-            metrics
+            detailList
             Divider()
             if let message = viewModel.statusMessage {
                 Text(message)
@@ -88,6 +88,28 @@ struct MemoryPopoverView: View {
         }
     }
 
+    @ViewBuilder
+    private var detailList: some View {
+        switch viewModel.panelDisplay {
+        case .heavyProcesses:
+            processList
+        case .statistics:
+            metrics
+        }
+    }
+
+    private var processList: some View {
+        VStack(spacing: 6) {
+            if viewModel.heavyProcesses.isEmpty {
+                metricRow(L10n.text(.noHeavyProcesses, language), "—")
+            } else {
+                ForEach(viewModel.heavyProcesses) { process in
+                    metricRow(process.name, viewModel.format(bytes: process.bytes))
+                }
+            }
+        }
+    }
+
     private var metrics: some View {
         VStack(spacing: 6) {
             metricRow(L10n.text(.available, language), availableText)
@@ -124,14 +146,17 @@ struct MemoryPopoverView: View {
     }
 
     private func metricRow(_ title: String, _ value: String) -> some View {
-        HStack {
+        HStack(spacing: 8) {
             Text(title)
                 .foregroundStyle(.secondary)
-            Spacer()
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 8)
             Text(value)
                 .monospacedDigit()
                 .foregroundStyle(valueColor)
                 .contentTransition(.numericText())
+                .layoutPriority(1)
         }
         .font(.callout)
     }

@@ -4,11 +4,11 @@
 
 ![RAM Control](screen.png)
 
-RAM Control 1.3 is a macOS menu bar utility. It shows how much memory is still available and, on click, opens a panel with the details. There is no Dock window: the app lives as a menu bar agent.
+RAM Control 1.4 is a macOS menu bar utility. It shows how much memory is still available and, on click, opens a panel with the details. There is no Dock window: the app lives as a menu bar agent.
 
 It needs macOS 14 or later and a Mac with Apple Silicon.
 
-Download: [RAM-Control-1.3.dmg](RAM-Control-1.3.dmg)
+Download: [RAM-Control-1.4.dmg](RAM-Control-1.4.dmg)
 
 ## Menu bar
 
@@ -21,16 +21,18 @@ The menu label keeps the normal menu text color. The tooltip shows the state: No
 A click on the label opens the panel.
 
 - The title Memory and a state badge. The badge uses the same color as the bar.
-- Available memory in large type. That figure, and every value from Available through Swap Used, stays gray (`NSColor.systemGray`).
+- Available memory in large type. That figure, and every value in the lower list, stays gray (`NSColor.systemGray`).
 - A Physical RAM row: the full amount the system reports.
 - A usage bar for the Used share. Used is labeled on the left, Available on the right. The bar uses the state palette. With no data it uses the accent color.
 - A chart, when it is enabled in Settings. Time runs left to right: the right edge is now, and history fills in toward the left. Height is occupied bytes, scaled from the minimum to the maximum of the visible samples. The line is 1 pt thick and has no fill. Each sample stores its color when it is read, and that color stays put after the thresholds change. Neighboring stored colors still blend. A gap longer than 20 seconds breaks the line. A gray dashed grid draws five vertical lines at `window/5 … window`, each labeled with its duration, and two horizontal lines for the minimum and maximum occupied memory. The window is 1, 3, 5, or 10 minutes. The default is 5.
-- The rows Available, Used, Active, Inactive, Wired, Compressed, Purgeable, and Swap Used.
+- The lower list follows Show. Heavy Processes, the default, lists up to eight processes using the most memory, with the amount each one uses. Statistics lists Available, Used, Active, Inactive, Wired, Compressed, Purgeable, and Swap Used.
 - Settings… and Quit.
 
 The panel has no Updated row. The list refreshes on its own at the chosen interval.
 
 ### What the rows mean
+
+These rows are on the panel when Show is set to Statistics.
 
 **Available** is how much physical RAM can still be taken. It is the Activity Monitor figure, not a sum of free pages from older reports.
 
@@ -93,6 +95,8 @@ A shorter interval redraws the chart more often. The memory formula stays the sa
 
 ### Appearance
 
+**Show.** Heavy Processes or Statistics. Heavy Processes is the default. The lower list then names the eight processes using the most memory right now, and how much each one uses. The number is the physical footprint, the same kind of figure as the Memory column in Activity Monitor. Fewer than eight processes means the list is shorter. If none can be read, the row says No processes and shows an em dash. Statistics restores Available through Swap Used. The large Available figure, the bar, and the chart stay in both modes.
+
 **Language.** English or Русский. English is the default. The names in the picker are always `English` and `Русский`. The units `GB` and `GiB` stay as written.
 
 **Units.** `GB` is decimal gigabytes, divisor 1,000,000,000. `GiB` is binary gibibytes, divisor 1,073,741,824. Both show exactly one digit after a decimal point. The default is GB.
@@ -112,19 +116,19 @@ An invalid pair leaves the saved thresholds in place, and the bar does not pick 
 Two lines, and nothing else:
 
 ```text
-Version: RAM Control version 1.3
+Version: RAM Control version 1.4
 Author: Голицын Артем (2026)
 ```
 
-In Russian the same lines are `Версия: RAM Control версия 1.3` and `Автор: Голицын Артем (2026)`. The version number comes from the built app. The author name is not translated.
+In Russian the same lines are `Версия: RAM Control версия 1.4` and `Автор: Голицын Артем (2026)`. The version number comes from the built app. The author name is not translated.
 
 ### Reset
 
-Reset Settings returns the interval to 1 second, turns the chart on, sets the chart period to 5 minutes, the units to GB, the language to English, and the thresholds to 30 and 15. Launch at login stays as it is. The in-memory chart history is kept.
+Reset Settings returns the interval to 1 second, turns the chart on, sets the chart period to 5 minutes, the units to GB, the language to English, the thresholds to 30 and 15, and Show to Heavy Processes. Launch at login stays as it is. The in-memory chart history is kept.
 
 ## Installation
 
-Open [RAM-Control-1.3.dmg](RAM-Control-1.3.dmg) and drag RAM Control into the Applications folder.
+Open [RAM-Control-1.4.dmg](RAM-Control-1.4.dmg) and drag RAM Control into the Applications folder.
 
 If macOS will not open the app, clear quarantine or confirm the launch in Finder (right-click RAM Control, then Open):
 
@@ -149,7 +153,7 @@ cp -R "/absolute/path/RAM Control.app" /Applications/
 ## Limits
 
 - Apple Silicon only, and macOS 14 or later.
-- The app uses no network. Memory is read with Mach and `sysctl`, not by launching `vm_stat`, `top`, or `memory_pressure`.
+- The app uses no network. Memory is read with Mach and `sysctl`, not by launching `vm_stat`, `top`, or `memory_pressure`. The process list is read with libproc, not with `ps` or `top`.
 - A failed read clears the panel. The previous sample is not left on screen as if it were new.
 - Launch at login needs an installed copy, usually in `/Applications`.
 - `strerror` and `mach_error_string` stay in the system language. Only the sentence around them is translated.

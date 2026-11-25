@@ -266,7 +266,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = app.ramcontrol.RAMControl;
 				PRODUCT_MODULE_NAME = RAMControl;
 				PRODUCT_NAME = "RAM Control";
@@ -295,7 +295,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = app.ramcontrol.RAMControl;
 				PRODUCT_MODULE_NAME = RAMControl;
 				PRODUCT_NAME = "RAM Control";
@@ -317,7 +317,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				OTHER_LDFLAGS = (
 					"-framework",
 					XCTest,
@@ -343,7 +343,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				OTHER_LDFLAGS = (
 					"-framework",
 					XCTest,

@@ -64,6 +64,11 @@ struct SettingsView: View {
             }
 
             Section(L10n.text(.appearance, language)) {
+                Picker(L10n.text(.showPanel, language), selection: $viewModel.panelDisplay) {
+                    ForEach(PanelDisplay.allCases) { mode in
+                        Text(mode.label(language: language)).tag(mode)
+                    }
+                }
                 Picker(L10n.text(.language, language), selection: $viewModel.language) {
                     ForEach(AppLanguage.allCases) { item in
                         Text(item.nativeName).tag(item)
@@ -188,6 +193,6 @@ private enum ThresholdFeedback: Equatable {
 
 enum AppInfo {
     static var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.3"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.4"
     }
 }

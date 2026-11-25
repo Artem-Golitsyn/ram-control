@@ -9,6 +9,7 @@ enum Constants {
         static let language = "appLanguage"
         static let historyGraphEnabled = "memoryGraphEnabled"
         static let historyWindowMinutes = "memoryGraphMinutes"
+        static let panelDisplay = "panelDisplay"
 
         static let all = [
             refreshInterval,
@@ -18,6 +19,7 @@ enum Constants {
             language,
             historyGraphEnabled,
             historyWindowMinutes,
+            panelDisplay,
         ]
     }
 
@@ -30,6 +32,7 @@ enum Constants {
             DefaultsKey.language: AppLanguage.english.rawValue,
             DefaultsKey.historyGraphEnabled: true,
             DefaultsKey.historyWindowMinutes: HistoryWindow.five.rawValue,
+            DefaultsKey.panelDisplay: PanelDisplay.heavyProcesses.rawValue,
         ])
     }
 

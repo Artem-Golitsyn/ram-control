@@ -36,6 +36,12 @@ final class MemoryViewModel {
         didSet { persistLanguage() }
     }
 
+    var panelDisplay: PanelDisplay = .heavyProcesses {
+        didSet { handlePanelDisplayChange(from: oldValue) }
+    }
+
+    private(set) var heavyProcesses: [ProcessMemory] = []
+
     var launchAtLoginEnabled = false
     var launchAtLoginError: LaunchAtLoginError?
 
@@ -64,6 +70,7 @@ final class MemoryViewModel {
             thresholds = sanitized
         }
         language = AppLanguage.fromStored(defaults.string(forKey: Constants.DefaultsKey.language))
+        panelDisplay = PanelDisplay.fromStored(defaults.string(forKey: Constants.DefaultsKey.panelDisplay))
         launchAtLoginEnabled = LaunchAtLoginManager.isEnabled
         didStart = true
         bindSystemEvents()
@@ -162,6 +169,7 @@ final class MemoryViewModel {
         unit = .gb
         thresholds = .standard
         language = .english
+        panelDisplay = .heavyProcesses
     }
 
     func stopMonitoring() {
@@ -171,11 +179,14 @@ final class MemoryViewModel {
     func refreshNow() async {
         refreshGeneration &+= 1
         let generation = refreshGeneration
-        let result = await Task.detached(priority: .utility) {
-            MemoryMonitor.readSample()
+        let includeProcesses = panelDisplay == .heavyProcesses
+        let refresh = await Task.detached(priority: .utility) {
+            let sample = MemoryMonitor.readSample()
+            let processes = includeProcesses ? ProcessMemoryReader.readTop() : nil
+            return MemoryRefresh(sample: sample, processes: processes)
         }.value
         guard !Task.isCancelled, generation == refreshGeneration else { return }
-        apply(result)
+        apply(refresh)
     }
 
     private func restartMonitoring() {
@@ -197,6 +208,13 @@ final class MemoryViewModel {
                 break
             }
         }
+    }
+
+    private func apply(_ refresh: MemoryRefresh) {
+        if let processes = refresh.processes {
+            heavyProcesses = processes
+        }
+        apply(refresh.sample)
     }
 
     private func apply(_ result: Result<MemoryStats, MemoryMonitorError>) {
@@ -263,6 +281,13 @@ final class MemoryViewModel {
         UserDefaults.standard.set(language.rawValue, forKey: Constants.DefaultsKey.language)
     }
 
+    private func handlePanelDisplayChange(from oldValue: PanelDisplay) {
+        guard didStart else { return }
+        UserDefaults.standard.set(panelDisplay.rawValue, forKey: Constants.DefaultsKey.panelDisplay)
+        guard panelDisplay != oldValue else { return }
+        Task { await refreshNow() }
+    }
+
     private func persistThresholds() {
         guard didStart else { return }
         let defaults = UserDefaults.standard
@@ -299,6 +324,11 @@ final class MemoryViewModel {
         guard raw < Double(UInt64.max) else { return UInt64.max }
         return UInt64(raw)
     }
+}
+
+private struct MemoryRefresh: Sendable {
+    var sample: Result<MemoryStats, MemoryMonitorError>
+    var processes: [ProcessMemory]?
 }
 
 private final class RefreshTaskStore: @unchecked Sendable {
